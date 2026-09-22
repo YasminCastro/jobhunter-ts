@@ -1,22 +1,12 @@
-import winston from "winston";
 import express from "express";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import type { Request, Response, NextFunction } from "express";
 import errorHandler from "./middleware/error.js";
 import router from "./api/routes/index.js";
+import logger from "./helper/logger.js";
 
 const PORT = process.env.PORT || 3000;
-
-const logger = winston.createLogger({
-  level: "info",
-  format: winston.format.json(),
-  transports: [
-    new winston.transports.Console(),
-    new winston.transports.File({ filename: "logs/error.log", level: "error" }),
-    new winston.transports.File({ filename: "logs/combined.log" }),
-  ],
-});
 
 logger.info("Application is starting...");
 
