@@ -1,0 +1,18 @@
+{"level":"info","message":"Application is starting..."}
+{"level":"info","message":"Received request for root endpoint"}
+{"level":"warn","message":"Unhandled request: GET /favicon.ico"}
+{"level":"info","message":"Received request for root endpoint"}
+{"level":"info","message":"Application is starting..."}
+{"level":"info","message":"Application is starting..."}
+{"level":"info","message":"Received request for root endpoint"}
+{"level":"info","message":"Received request for root endpoint"}
+{"level":"info","message":"Application is starting..."}
+{"level":"warn","message":"Unhandled request: GET //demo"}
+{"level":"warn","message":"Unhandled request: GET /demo"}
+{"level":"warn","message":"Unhandled request: GET /demo"}
+{"level":"warn","message":"Unhandled request: GET /demo"}
+{"level":"warn","message":"Unhandled request: GET /demo"}
+{"level":"info","message":"Application is starting..."}
+{"level":"warn","message":"Unhandled request: GET /demo"}
+{"level":"warn","message":"Unhandled request: GET /demo"}
+{"level":"info","message":"Application is starting..."}

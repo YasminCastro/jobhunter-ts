@@ -1,0 +1,319 @@
+{
+  "name": "Rafa Example",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -96
+      ],
+      "id": "89458d2a-1eb4-47c5-96f6-8c3f77a1bc92",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "Run actor and get dataset",
+        "actorSource": "store",
+        "actorId": {
+          "__rl": true,
+          "value": "hKByXkMQaC5Qt9UMN",
+          "mode": "list",
+          "cachedResultName": "Linkedin Jobs Scraper (curious_coder/linkedin-jobs-scraper)",
+          "cachedResultUrl": "https://console.apify.com/actors/hKByXkMQaC5Qt9UMN/input"
+        },
+        "customBody": "{\n  \"keywords\": \"Frontend Developer\",\n  \"location\": \"Brazil\"\n}",
+        "timeout": {},
+        "maxTotalChargeUsd": {}
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 2,
+      "position": [
+        224,
+        -96
+      ],
+      "id": "60905cdc-4403-4724-9f12-15c577ace425",
+      "name": "Get Linkedin Jobs",
+      "credentials": {
+        "apifyApi": {
+          "id": "4fbSUiL84yvbkDrn",
+          "name": "Apify account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Termos que PRECISAM estar no TÍTULO da vaga\nconst titulosFoco = [\n  'frontend', 'front-end', 'front end',\n  'fullstack', 'full-stack', 'full stack',\n  'react', 'typescript', 'javascript', 'n8n'\n];\n\n// 2. Termos para descartar direto pelo TÍTULO\nconst termosDescarte = [\n  'lead', 'tech lead', 'manager', 'gerente', 'director',\n  'ios', 'android', 'flutter', 'qa', 'tester', 'data', 'dados', \n  'devops', 'c#', '.net', 'java', 'php', 'python', 'ruby'\n];\n\nconst vagasFiltradas = $input.all().filter(item => {\n  const titulo = (item.json.title || '').toLowerCase();\n\n  // Verifica se o título tem pelo menos uma das suas stacks principais\n  const tituloValido = titulosFoco.some(termo => titulo.includes(termo));\n  \n  // Verifica se é uma vaga de outra área/linguagem\n  const ehDescartado = termosDescarte.some(termo => titulo.includes(termo));\n\n  return tituloValido && !ehDescartado;\n});\n\n// Limita vagas para garantir zero estouro na API da Groq\nreturn vagasFiltradas.slice(0, 10).map(item => ({\n  json: {\n    ...item.json,\n    // Corta a descrição em 600 caracteres para economizar tokens\n    description: (item.json.description || '').slice(0, 600)\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        -96
+      ],
+      "id": "8367551a-a6ce-4d51-b12e-e5575784209d",
+      "name": "Filter Vagas"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        744,
+        136
+      ],
+      "id": "6e6a4018-6aa9-4ec9-bd01-1ed3a11b3f39",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "yT4aEaCxDSt49Uvi",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Você é um recrutador técnico especialista. Analise a aderência desta vaga ao perfil do candidato.\n\nPERFIL DO CANDIDATO:\n- Função: Desenvolvedor(a) Fullstack / Frontend\n- Stacks: JavaScript, TypeScript, React, Node.js, Docker, n8n.\n- Preferência: Trabalho Remoto.\n\nDADOS DA VAGA:\nVaga: {{ $json.title }}\nEmpresa: {{ $json.companyName }}\nLocal: {{ $json.location }}\nDescrição: {{ ($json.description || '').slice(0, 1500) }}\n\nINSTRUÇÕES DE RESPOSTA:\nResponda EXCLUSIVAMENTE em formato JSON puro com as chaves:\n{\n  \"score\": 85,\n  \"pontos_fortes\": [\"...\"],\n  \"requisitos_faltantes\": [\"...\"],\n  \"resumo_vaga\": \"...\"\n}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        672,
+        -96
+      ],
+      "id": "3777f7fd-c282-436b-9861-72bda516d1c1",
+      "name": "Analyze vagas"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item, index) => {\n  // 1. Pega o texto gerado pelo Basic LLM Chain\n  let rawText = item.json.text || '';\n\n  // Remove eventuais blocos de código markdown (ex: ```json ... ```)\n  rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();\n\n  // 2. Converte a string da IA em JSON\n  let aiAnalysis = {};\n  try {\n    aiAnalysis = JSON.parse(rawText);\n  } catch (error) {\n    aiAnalysis = {\n      score: 0,\n      pontos_fortes: [],\n      requisitos_faltantes: [],\n      resumo_vaga: 'Erro ao processar JSON da IA'\n    };\n  }\n\n  // 3. Resgata os dados originais da vaga pelo mesmo índice\n  const job = $('Filter Vagas').all()[index]?.json || {};\n\n  // 4. Une tudo em um único objeto limpo\n  return {\n    json: {\n      jobId: job.jobId || index,\n      title: job.title || 'Título não informado',\n      company: job.companyName || 'Empresa não informada',\n      location: job.location || '',\n      url: job.link || '',\n      description: job.description || '',\n      score: aiAnalysis.score || 0,\n      pontos_fortes: aiAnalysis.pontos_fortes || [],\n      requisitos_faltantes: aiAnalysis.requisitos_faltantes || [],\n      resumo_vaga: aiAnalysis.resumo_vaga || ''\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        -96
+      ],
+      "id": "97f84ce6-8cfe-4ef2-be94-9896acc7e659",
+      "name": "Parse Vagas"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "60c13b0d-7856-4d75-910e-6fa35cd6bbc7",
+              "leftValue": "={{ $json.score }}",
+              "rightValue": 60,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1248,
+        -96
+      ],
+      "id": "b0d65f8a-08f5-441c-b366-19e000e9c0ca",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1544,
+        136
+      ],
+      "id": "9faee179-a876-462e-a1a5-0b504b68ac48",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "yT4aEaCxDSt49Uvi",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Vaga: {{ $json.title }} na empresa {{ $json.company }}\nResumo da vaga: {{ $json.resumo_vaga }}\nPontos fortes do meu perfil para essa vaga: {{ Array.isArray($json.pontos_fortes) ? $json.pontos_fortes.join(', ') : $json.pontos_fortes }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Você é um profissional sênior de tecnologia. Escreva uma carta de apresentação em português, curta e direta para se candidatar à vaga. DADOS DO CANDIDATO: - Nome: Rafaella Ballerini - Portfólio / GitHub: https://github.com/rafaballerini O tom deve ser profissional e focado em resolver problemas. Assine com o nome do candidato ao final."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1472,
+        -96
+      ],
+      "id": "c51102e8-cd30-4533-8251-ca8e2a12d4e0",
+      "name": "Carta de recomendação"
+    },
+    {
+      "parameters": {
+        "chatId": "8248652286",
+        "text": "=🎯 *NOVA VAGA COMPATÍVEL ENCONTRADA!* \n📌 *Vaga:* {{ $('Parse Vagas').item.json.title }} \n🏢 *Empresa:* {{ $('Parse Vagas').item.json.company }} \n📍 *Local:* {{ $('Parse Vagas').item.json.location }} \n📊 *Score de Aderência:* {{ $('Parse Vagas').item.json.score }}/100  \n💡 *Resumo:* _{{ $('Parse Vagas').item.json.resumo_vaga }}_  \n✅ *Pontos Fortes: *• {{ Array.isArray($('Parse Vagas').item.json.pontos_fortes) ? $('Parse Vagas').item.json.pontos_fortes.join('\\n• ') : $('Code in JavaScript1').item.json.pontos_fortes }}  \n✉️ *Sugestão de Carta de Apresentação:  * {{ $json.text }}  \n🔗 [Clique aqui para abrir e aplicar na vaga]({{ $('Parse Vagas').item.json.url }})",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1840,
+        -96
+      ],
+      "id": "9da28f17-8366-4b0c-9ac4-d8cd05bd7000",
+      "name": "Send a text message",
+      "webhookId": "b41aca7c-97c2-42cf-b778-68d12accf0c1",
+      "credentials": {
+        "telegramApi": {
+          "id": "2IeN0KeiaZJRKUlT",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get Linkedin Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Linkedin Jobs": {
+      "main": [
+        [
+          {
+            "node": "Filter Vagas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Vagas": {
+      "main": [
+        [
+          {
+            "node": "Analyze vagas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Analyze vagas",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze vagas": {
+      "main": [
+        [
+          {
+            "node": "Parse Vagas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Vagas": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Carta de recomendação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Carta de recomendação",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carta de recomendação": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "48e6b0c6-16fb-402f-b0a4-7edf1c5af24b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ce9adec3dd901698035cc1244c0116ad376778950c75f75392e05348bee397a5"
+  },
+  "nodeGroups": [],
+  "id": "GP6NR1QDC3wYJcq2",
+  "tags": []
+}
