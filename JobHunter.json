@@ -1,0 +1,252 @@
+{
+  "name": "JobHunter",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8794baa5-7943-4614-aee0-255cb2ac9b05",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:3000/jobspy",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n    \"position\": \"Fullstack Developer\",\n    \"location\": \"Brazil\",\n    \"experienceLevel\": \"entry level\",\n    \"remoteFilter\": \"remote\",\n    \"focusKeywords\": [\n        \"frontend\",\n        \"front-end\",\n        \"front end\",\n        \"fullstack\",\n        \"full-stack\",\n        \"full stack\",\n        \"backend\",\n        \"back-end\",\n        \"back end\",\n        \"software engineer\",\n        \"engenheiro de software\",\n        \"engenheira de software\",\n        \"desenvolvedor\",\n        \"desenvolvedora\",\n        \"react\",\n        \"angular\",\n        \"next\",\n        \"next.js\",\n        \"node\",\n        \"node.js\",\n        \"typescript\",\n        \"javascript\",\n        \"n8n\",\n        \"pleno\",\n        \"plena\",\n        \"PL\"\n    ],\n    \"discardKeywords\": [\n        \"senior\",\n        \"estágio\",\n        \"estagio\",\n        \"intern\",\n        \"internship\",\n        \"trainee\",\n        \"júnior\",\n        \"junior\",\n        \"jr\",\n        \"lead\",\n        \"tech lead\",\n        \"manager\",\n        \"gerente\",\n        \"director\",\n        \"coordenador\",\n        \"banco de talentos\",\n        \"talent pool\",\n        \"banco de perfis\",\n        \"qa\",\n        \"tester\",\n        \"data\",\n        \"dados\",\n        \"devops\",\n        \"suporte\",\n        \"help desk\",\n        \"infraestrutura\",\n        \"ios\",\n        \"flutter\",\n        \"c#\",\n        \".net\",\n        \"java\",\n        \"php\",\n        \"ruby\",\n        \"vue\",\n        \"golang\",\n        \"rust\",\n        \"wordpress\",\n        \"magento\",\n        \"deficiência\",\n        \"pcd\"\n    ]\n}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "beb66d89-4e5f-4732-bbd2-853e33b80d7f",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "results",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "e77cbb3c-10ad-45d9-9cf2-c8ae5ad6b511",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Você é um recrutador técnico. Avalie a aderência da vaga ao perfil do candidato.\n\nPERFIL DO CANDIDATO:\n- Cargo: Desenvolvedora Fullstack / Frontend / Backend\n- Senioridade: pleno\n- Stacks: TypeScript, React, Node.js, Express, Docker, n8n\n- Idiomas: Português nativo, Inglês Avançado\n- Preferência: Remoto\n\nVAGA:\nTítulo: {{ $json.position }}\nEmpresa: {{ $json.company }}\nLocal: {{ $json.location }}\nDescrição: {{ $json.jobDescription }}\n\nResponda SOMENTE com um JSON neste formato:\n{\n  \"score\": <0 a 100>,\n  \"pontos_fortes\": [\"...\"],\n  \"requisitos_faltantes\": [\"...\"],\n  \"alertas\": [\"ex: exige inglês fluente, presencial em outra cidade\"],\n  \"resumo\": \"2-3 frases sobre a vaga\"\n}\n",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        672,
+        0
+      ],
+      "id": "ea40c7d9-2063-4373-a7ef-cb299ce57c7e",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "llama3.1:8b",
+        "options": {
+          "temperature": 0.1,
+          "keepAlive": "10m",
+          "numCtx": 4096,
+          "format": "json"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        608,
+        208
+      ],
+      "id": "312bd3fc-80dc-46db-98be-4be9fb8dc4b2",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "UwCorlZsP8YFnmPQ",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const job = $('Split Out').item.json;\n\n// a resposta pode vir em \"text\", \"output\" ou já como objeto\nconst out = $json.text ?? $json.output ?? $json;\n\nlet analise;\ntry {\n  if (typeof out === 'object') {\n    analise = out;\n  } else {\n    // pega só o trecho entre a primeira { e a última }\n    const match = String(out).match(/\\{[\\s\\S]*\\}/);\n    analise = JSON.parse(match[0]);\n  }\n  analise.score = Number(analise.score) || 0;\n} catch (e) {\n  analise = { score: 0, erro: true, motivo: e.message, raw: out };\n}\n\nreturn { json: { ...job, ...analise } };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "eecdaf3f-040e-4dcd-83e8-f9839c173c27",
+      "name": "Juntar análise"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f7ee9d39-b450-4c56-8d1a-73cd5f840982",
+              "leftValue": "={{ $json.score }}",
+              "rightValue": 60,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1264,
+        0
+      ],
+      "id": "8119cf9a-a552-44f2-8190-f0aa6baec89a",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "chatId": "8248652286",
+        "text": "=",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1488,
+        -96
+      ],
+      "id": "569f1578-b6aa-4220-9ed6-882897daa4d7",
+      "name": "Send a text message",
+      "webhookId": "6d789aa3-c8e4-4074-84d3-32a172f59061",
+      "credentials": {
+        "telegramApi": {
+          "id": "8mHpYQBLxKDikfLL",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Juntar análise",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar análise": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c374f978-da85-44da-ad77-97a24eb35b16",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2a32cb2e4a61b601e80d3fb42522c9ba35e158be3bd954d9c290a4c6bdb17935"
+  },
+  "nodeGroups": [],
+  "id": "GNlTqhpEL0MTOVx7",
+  "tags": []
+}
