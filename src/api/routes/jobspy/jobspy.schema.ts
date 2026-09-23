@@ -18,7 +18,7 @@ export const jobSpyBodySchema = z.object({
       error:
         "dateSincePosted must be one of: past 24 hours, past week, past month",
     })
-    .default("past week")
+    .default("24hr")
     .nullish(),
   experienceLevel: z
     .enum(
@@ -36,6 +36,8 @@ export const jobSpyBodySchema = z.object({
       },
     )
     .nullish(),
+  focusKeywords: z.array(z.string()).optional(),
+  discardKeywords: z.array(z.string()).optional(),
 });
 
 export type JobSpyBody = z.infer<typeof jobSpyBodySchema>;

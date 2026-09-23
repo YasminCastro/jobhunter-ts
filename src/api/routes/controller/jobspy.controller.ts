@@ -8,6 +8,7 @@ import randomUseragent from "random-useragent";
 import delay from "helper/delay.js";
 import logger from "helper/logger.js";
 import type { JobSpyBody } from "../jobspy/jobspy.schema.js";
+import matchesAny from "helper/matchesAny.js";
 
 export const jobSpy = async (
   req: Request<{}, {}, JobSpyBody>,
@@ -21,6 +22,8 @@ export const jobSpy = async (
       remoteFilter,
       dateSincePosted,
       experienceLevel,
+      discardKeywords,
+      focusKeywords,
     } = req.body;
 
     const queryOptions = {
@@ -47,12 +50,24 @@ export const jobSpy = async (
         `Fetching description ${index + 1}/${response.length}: ${job.position} at ${job.company}`,
         { jobUrl: job.jobUrl },
       );
+
+      if (focusKeywords?.length && !matchesAny(job.position, focusKeywords)) {
+        logger.info(`Skipping "${job.position}" (no focusKeywords match)`);
+        continue;
+      }
+
+      if (matchesAny(job.position, discardKeywords)) {
+        logger.info(`Skipping "${job.position}" (matched discardKeywords)`);
+        continue;
+      }
+
       const jobDescription = await fetchJobDescription(job.jobUrl);
+      await delay(2000 + Math.random() * 1000);
+
       results.push({
         ...job,
         jobDescription: jobDescription,
       });
-      await delay(2000 + Math.random() * 1000);
     }
 
     logger.info(`Job search completed. ${results.length} job(s) processed`);
