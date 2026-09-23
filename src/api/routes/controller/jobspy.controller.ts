@@ -9,6 +9,10 @@ import delay from "helper/delay.js";
 import logger from "helper/logger.js";
 import type { JobSpyBody } from "../jobspy/jobspy.schema.js";
 import matchesAny from "helper/matchesAny.js";
+import { buildJobKey, isJobSent, markJobAsSent } from "helper/sentJobs.js";
+
+const MAX_PAGES = 10;
+const RESULTS_LIMIT = 10;
 
 export const jobSpy = async (
   req: Request<{}, {}, JobSpyBody>,
@@ -26,48 +30,78 @@ export const jobSpy = async (
       focusKeywords,
     } = req.body;
 
-    const queryOptions = {
+    const baseQueryOptions = {
       keyword: position,
       location: location ?? undefined,
       dateSincePosted: dateSincePosted ?? undefined,
       remoteFilter: remoteFilter ?? undefined,
       experienceLevel: experienceLevel ?? undefined,
       limit: "10",
-      page: "0",
       has_verification: false,
       under_10_applicants: false,
     };
 
-    logger.info("Starting job search", { queryOptions });
+    logger.info("Starting job search", { baseQueryOptions });
 
     const results: any[] = [];
-    const response = await linkedIn.query(queryOptions);
+    let page = 0;
 
-    logger.info(`LinkedIn search returned ${response.length} job(s)`);
-
-    for (const [index, job] of response.entries()) {
-      logger.info(
-        `Fetching description ${index + 1}/${response.length}: ${job.position} at ${job.company}`,
-        { jobUrl: job.jobUrl },
-      );
-
-      if (focusKeywords?.length && !matchesAny(job.position, focusKeywords)) {
-        logger.info(`Skipping "${job.position}" (no focusKeywords match)`);
-        continue;
-      }
-
-      if (matchesAny(job.position, discardKeywords)) {
-        logger.info(`Skipping "${job.position}" (matched discardKeywords)`);
-        continue;
-      }
-
-      const jobDescription = await fetchJobDescription(job.jobUrl);
-      await delay(2000 + Math.random() * 1000);
-
-      results.push({
-        ...job,
-        jobDescription: jobDescription,
+    while (page < MAX_PAGES && results.length < RESULTS_LIMIT) {
+      const response = await linkedIn.query({
+        ...baseQueryOptions,
+        page: page.toString(),
       });
+
+      logger.info(`Page ${page} returned ${response.length} job(s)`);
+
+      if (response.length === 0) break;
+
+      let newJobsInPage = 0;
+
+      for (const [index, job] of response.entries()) {
+        if (results.length >= RESULTS_LIMIT) break;
+
+        const jobKey = buildJobKey(job);
+
+        if (isJobSent(jobKey)) {
+          logger.info(`Skipping "${job.position}" (already seen)`, {
+            jobUrl: job.jobUrl,
+          });
+          continue;
+        }
+
+        newJobsInPage++;
+        markJobAsSent(jobKey, job);
+
+        logger.info(
+          `Processing ${index + 1}/${response.length}: ${job.position} at ${job.company}`,
+          { jobUrl: job.jobUrl },
+        );
+
+        if (focusKeywords?.length && !matchesAny(job.position, focusKeywords)) {
+          logger.info(`Skipping "${job.position}" (no focusKeywords match)`);
+          continue;
+        }
+
+        if (matchesAny(job.position, discardKeywords)) {
+          logger.info(`Skipping "${job.position}" (matched discardKeywords)`);
+          continue;
+        }
+
+        const jobDescription = await fetchJobDescription(job.jobUrl);
+        await delay(2000 + Math.random() * 1000);
+
+        results.push({
+          ...job,
+          jobDescription: jobDescription,
+        });
+      }
+
+      // Só avança de página se esta página inteira já tiver sido vista antes;
+      // do contrário, encerramos por aqui mesmo sem atingir o RESULTS_LIMIT.
+      if (newJobsInPage > 0) break;
+
+      page++;
     }
 
     logger.info(`Job search completed. ${results.length} job(s) processed`);
