@@ -1,0 +1,9 @@
+node_modules
+dist
+data
+logs
+.git
+n8n-workflows
+Rafa Example.json
+docker-compose.yml
+Dockerfile
