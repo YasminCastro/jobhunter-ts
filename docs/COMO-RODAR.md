@@ -35,7 +35,7 @@ Guia para subir o projeto completo (API + n8n + Ollama) com Docker e usar o work
 
 | Serviço  | Container           | Porta                    |
 | -------- | ------------------- | ------------------------ |
-| API      | `job-hunter-api`    | `127.0.0.1:3000`         |
+| API      | `job-hunter-api`    | `127.0.0.1:3001`         |
 | Ollama   | `job-hunter-ollama` | `127.0.0.1:11434`        |
 | n8n      | `job-hunter-n8n`    | `5678`                   |
 
