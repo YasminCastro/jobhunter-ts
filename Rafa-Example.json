@@ -180,7 +180,7 @@
     },
     {
       "parameters": {
-        "chatId": "8248652286",
+        "chatId": "SEU_CHAT_ID",
         "text": "=🎯 *NOVA VAGA COMPATÍVEL ENCONTRADA!* \n📌 *Vaga:* {{ $('Parse Vagas').item.json.title }} \n🏢 *Empresa:* {{ $('Parse Vagas').item.json.company }} \n📍 *Local:* {{ $('Parse Vagas').item.json.location }} \n📊 *Score de Aderência:* {{ $('Parse Vagas').item.json.score }}/100  \n💡 *Resumo:* _{{ $('Parse Vagas').item.json.resumo_vaga }}_  \n✅ *Pontos Fortes: *• {{ Array.isArray($('Parse Vagas').item.json.pontos_fortes) ? $('Parse Vagas').item.json.pontos_fortes.join('\\n• ') : $('Code in JavaScript1').item.json.pontos_fortes }}  \n✉️ *Sugestão de Carta de Apresentação:  * {{ $json.text }}  \n🔗 [Clique aqui para abrir e aplicar na vaga]({{ $('Parse Vagas').item.json.url }})",
         "additionalFields": {}
       },
