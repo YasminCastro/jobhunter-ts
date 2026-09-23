@@ -36,3 +36,4 @@ Este projeto foi baseado no [tutorial da Rafaella Ballerini](https://youtu.be/sq
 - 🔑 [Credenciais](docs/CREDENCIAIS.md): como configurar o Ollama e o bot do Telegram no n8n.
 - ✏️ [Campos personalizáveis](docs/PERSONALIZA%C3%87%C3%83O.md): filtros de busca, perfil para a IA e mensagem do Telegram.
 - 🔌 [API](docs/API.md): endpoints, parâmetros e funcionamento da API.
+- 🛠️ [Problemas comuns](docs/PROBLEMAS.md): soluções para erros conhecidos, como o modelo do Ollama não reconhecido no n8n.

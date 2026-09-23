@@ -7,7 +7,7 @@ O Ollama é a Inteligência Artificial que roda no seu próprio computador. Ela 
 3. No campo **Credential**, clique em **Create New Credential** (será criada uma credencial do tipo **Ollama account**).
 4. No campo **Base URL**, coloque: `http://ollama:11434`
 5. Clique em **Save**. O n8n vai testar a conexão e mostrar uma mensagem de sucesso.
-6. Confira se o modelo selecionado no nó é o **llama3.1:8b** (ele é baixado automaticamente na primeira vez que os serviços sobem, o que pode levar alguns minutos).
+6. Confira se o modelo selecionado no nó é o **llama3.1:8b** (ele é baixado automaticamente na primeira vez que os serviços sobem, o que pode levar alguns minutos). Se aparecer o aviso `The value "llama3.1:8b" is not supported!`, veja [PROBLEMAS.md](PROBLEMAS.md).
 
 > **Atenção:** use `http://ollama:11434`, e não `http://localhost:11434`. Dentro do Docker, o n8n enxerga o Ollama pelo nome do serviço (`ollama`). Com `localhost`, a conexão falha.
 
