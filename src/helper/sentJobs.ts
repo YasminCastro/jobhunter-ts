@@ -64,3 +64,35 @@ export function markJobAsSent(
     Date.now(),
   );
 }
+
+const listStmt = db.prepare(`
+  SELECT hash, company, position, location, job_url, created_at
+  FROM sent_jobs
+  WHERE created_at >= ? AND created_at <= ?
+  ORDER BY created_at DESC
+`);
+
+type SentJobRow = {
+  hash: string;
+  company: string | null;
+  position: string | null;
+  location: string | null;
+  job_url: string | null;
+  created_at: number;
+};
+
+export function listSentJobs(filter: { startDate?: number; endDate?: number }) {
+  const rows = listStmt.all(
+    filter.startDate ?? 0,
+    filter.endDate ?? Number.MAX_SAFE_INTEGER,
+  ) as SentJobRow[];
+
+  return rows.map((row) => ({
+    hash: row.hash,
+    company: row.company,
+    position: row.position,
+    location: row.location,
+    jobUrl: row.job_url,
+    createdAt: new Date(row.created_at).toISOString(),
+  }));
+}

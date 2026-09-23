@@ -7,9 +7,14 @@ import * as cheerio from "cheerio";
 import randomUseragent from "random-useragent";
 import delay from "helper/delay.js";
 import logger from "helper/logger.js";
-import type { JobSpyBody } from "../jobspy/jobspy.schema.js";
+import type { JobSpyBody, SentJobsQuery } from "../jobspy/jobspy.schema.js";
 import matchesAny from "helper/matchesAny.js";
-import { buildJobKey, isJobSent, markJobAsSent } from "helper/sentJobs.js";
+import {
+  buildJobKey,
+  isJobSent,
+  listSentJobs,
+  markJobAsSent,
+} from "helper/sentJobs.js";
 
 const MAX_PAGES = 10;
 const RESULTS_LIMIT = 10;
@@ -112,6 +117,24 @@ export const jobSpy = async (
     });
   } catch (error) {
     logger.error("Job search failed", { error });
+    next(new ErrorResponse(error, 500));
+  }
+};
+
+export const listJobs = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { startDate, endDate } = res.locals.query as SentJobsQuery;
+    const jobs = listSentJobs({ startDate, endDate });
+
+    logger.info(`Listed ${jobs.length} saved job(s)`, { startDate, endDate });
+
+    res.status(200).json({
+      success: true,
+      count: jobs.length,
+      results: jobs,
+    });
+  } catch (error) {
+    logger.error("Failed to list saved jobs", { error });
     next(new ErrorResponse(error, 500));
   }
 };

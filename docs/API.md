@@ -86,6 +86,46 @@ Se o body for inválido, a API responde `400` com as mensagens de validação.
 - A API só passa para a próxima página (até 10) quando todas as vagas da página atual já tinham sido vistas.
 - Entre uma descrição e outra há uma pausa de 2 a 3 segundos. Se o LinkedIn responder `429`, a API tenta de novo até 3 vezes com backoff exponencial.
 
+### `GET /jobspy`
+
+Lista as vagas salvas em `data/sent-jobs.db`, da mais recente para a mais antiga. Sem parâmetros, retorna todas.
+
+**Query params (opcionais):**
+
+| Campo       | Formato                         | Descrição                                                    |
+| ----------- | ------------------------------- | ------------------------------------------------------------ |
+| `startDate` | `YYYY-MM-DD` ou ISO 8601        | Vagas salvas a partir desta data                             |
+| `endDate`   | `YYYY-MM-DD` ou ISO 8601        | Vagas salvas até esta data (com `YYYY-MM-DD`, inclui o dia todo) |
+
+Datas sem horário são interpretadas em UTC. Para usar o fuso de Brasília, passe o offset: `2026-09-23T00:00:00-03:00`.
+
+**Exemplo:**
+
+```bash
+curl "http://localhost:3000/jobspy?startDate=2026-09-01&endDate=2026-09-23"
+```
+
+**Resposta:**
+
+```json
+{
+  "success": true,
+  "count": 1,
+  "results": [
+    {
+      "hash": "...",
+      "company": "...",
+      "position": "...",
+      "location": "...",
+      "jobUrl": "...",
+      "createdAt": "2026-09-23T12:00:00.000Z"
+    }
+  ]
+}
+```
+
+Datas inválidas ou `startDate` maior que `endDate` retornam `400`.
+
 ## Scripts
 
 | Comando            | O que faz                                                                  |
