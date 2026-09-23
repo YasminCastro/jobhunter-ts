@@ -7,20 +7,28 @@ import * as cheerio from "cheerio";
 import randomUseragent from "random-useragent";
 import delay from "helper/delay.js";
 import logger from "helper/logger.js";
+import type { JobSpyBody } from "../jobspy/jobspy.schema.js";
 
 export const jobSpy = async (
-  req: Request,
+  req: Request<{}, {}, JobSpyBody>,
   res: Response,
   next: NextFunction,
 ) => {
   try {
+    const {
+      position,
+      location,
+      remoteFilter,
+      dateSincePosted,
+      experienceLevel,
+    } = req.body;
+
     const queryOptions = {
-      keyword: "Full Stack Developer",
-      location: "Brazil",
-      dateSincePosted: "past week",
-      jobType: "full time",
-      remoteFilter: "remote",
-      experienceLevel: "entry level",
+      keyword: position,
+      location: location ?? undefined,
+      dateSincePosted: dateSincePosted ?? undefined,
+      remoteFilter: remoteFilter ?? undefined,
+      experienceLevel: experienceLevel ?? undefined,
       limit: "10",
       page: "0",
       has_verification: false,
@@ -49,16 +57,13 @@ export const jobSpy = async (
 
     logger.info(`Job search completed. ${results.length} job(s) processed`);
 
-    const message = "JobSpy message";
     res.status(200).json({
       success: true,
-      message: message,
       results: results,
     });
   } catch (error) {
     logger.error("Job search failed", { error });
     next(new ErrorResponse(error, 500));
-  } finally {
   }
 };
 

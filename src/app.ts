@@ -1,7 +1,6 @@
 import express from "express";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
-import type { Request, Response, NextFunction } from "express";
 import errorHandler from "./middleware/error.js";
 import router from "./api/routes/index.js";
 import logger from "./helper/logger.js";
@@ -26,11 +25,6 @@ app.use(router);
 app.use((req, res) => {
   logger.warn(`Unhandled request: ${req.method} ${req.url}`);
   res.status(404).json({ message: "Not found" });
-});
-
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  logger.error(`Error occurred: ${err.message}`);
-  res.status(500).send("Internal Server Error");
 });
 
 app.use(errorHandler);
